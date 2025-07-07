@@ -1,10 +1,10 @@
--- MIH HUB Auto-Farm Script
-print("[DEBUG] Initializing MIH HUB Auto-Farm...")
+-- MIH HUB Auto-Farm Script (Headless Console Version)
+print("[MIH HUB] Initializing auto-farm...")
 
 -- Configuration
 getgenv().Webhook = "https://discord.com/api/webhooks/1364262297182404760/KkAgDEMLbUsfzpLBcW0JQLkrNWb9T_oPE1gGI77I94VntVRbSOu2yA-9UG51av-e198J"
 getgenv().Priority_Item = "Trait Reroll"
-print("[CONFIG] Webhook set:", getgenv().Webhook)
+print("[CONFIG] Webhook:", getgenv().Webhook)
 print("[CONFIG] Priority item:", getgenv().Priority_Item)
 
 -- Wait for game to load
@@ -53,58 +53,24 @@ local autoPlayBool = playerData.Data.AutoPlay
 local gameRunningValue = ReplicatedStorage.Values.Game.GameRunning
 print("[DATA] Player data paths initialized")
 
--- Create full-screen black overlay with MIH HUB in the center
-print("[GUI] Creating full-screen black overlay...")
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "MIH_HUB_Overlay"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = game:GetService("CoreGui")
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(1, 0, 1, 0)
-frame.BackgroundTransparency = 0
-frame.BackgroundColor3 = Color3.new(0, 0, 0)
-frame.Parent = screenGui
-
-local title = Instance.new("TextLabel")
-title.AnchorPoint = Vector2.new(0.5, 0.5)
-title.Position = UDim2.new(0.5, 0, 0.5, 0)
-title.Size = UDim2.new(0, 400, 0, 80)
-title.Font = Enum.Font.GothamBlack
-title.TextSize = 48
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Text = "MIH HUB"
-title.BackgroundTransparency = 1
-title.Parent = frame
-print("[GUI] Full-screen overlay created")
-
--- Main script functions
+-- Main script variables
 local startTime = os.clock()
 local status = "Initializing..."
 print("[STATUS] " .. status)
 
 -- Utility functions
 local function inGame()
-    local result = workspace:FindFirstChild("WayPoint") ~= nil
-    print("[GAME-STATE] In game:", result)
-    return result
+    return workspace:FindFirstChild("WayPoint") ~= nil
 end
 
 local function getMerchantResetSeconds()
-    local seconds = math.max(0, 3600 - (os.time() - hourReset.Value))
-    print("[MERCHANT] Restock in:", seconds, "seconds")
-    return seconds
+    return math.max(0, 3600 - (os.time() - hourReset.Value))
 end
 
 -- Webhook function
 local function sendWebhook(content, embed)
-    if getgenv().Webhook == "" or not getgenv().Webhook then 
-        print("[WEBHOOK] No webhook configured, skipping")
-        return 
-    end
+    if getgenv().Webhook == "" or not getgenv().Webhook then return end
     
-    print("[WEBHOOK] Sending notification:", content)
     local data = {
         content = content,
         embeds = embed and {embed} or nil
@@ -115,12 +81,10 @@ local function sendWebhook(content, embed)
         if not requestFunc then return end
         
         local encoded = HttpService:JSONEncode(data)
-        local response = requestFunc({
+        requestFunc({
             Url = getgenv().Webhook,
             Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
+            Headers = {["Content-Type"] = "application/json"},
             Body = encoded
         })
     end)
@@ -132,9 +96,7 @@ end
 
 local function getInventoryAmount(itemName)
     local found = playerData.Items:FindFirstChild(itemName)
-    local amount = found and found.Amount.Value or 0
-    print("[INVENTORY] Checking", itemName, "Amount:", amount)
-    return amount
+    return found and found.Amount.Value or 0
 end
 
 -- Core functions
@@ -143,7 +105,6 @@ local function teleportToLobby()
     print("[STATUS] " .. status)
     local timeLeft = math.floor(getMerchantResetSeconds())
     
-    print("[TELEPORT] Returning to lobby for merchant restock")
     sendWebhook("🔄 Teleporting to Lobby", {
         title = "Merchant Restock Cycle",
         description = string.format("**%s** is returning to lobby for merchant restock\nTime until restock: **%d seconds**", PLAYER_NAME, timeLeft),
@@ -156,30 +117,18 @@ local function teleportToLobby()
 end
 
 local function sellAllPortals()
-    print("[SELL] Attempting to sell portals")
-    if inGame() then 
-        print("[SELL] Skipping - currently in game")
-        return 0, 0 
-    end
+    if inGame() then return 0, 0 end
     
     status = "Selling portals"
     print("[STATUS] " .. status)
     local portalItem = playerData.Items:FindFirstChild(PORTAL_TO_SELL)
-    
-    if not portalItem or portalItem.Amount.Value <= 0 then 
-        print("[SELL] No portals to sell")
-        return 0, 0 
-    end
+    if not portalItem or portalItem.Amount.Value <= 0 then return 0, 0 end
     
     local amountSold = portalItem.Amount.Value
     local goldBefore = goldStat.Value
-    print("[SELL] Selling", amountSold, PORTAL_TO_SELL, "Gold before:", goldBefore)
-    
     SellRemote:FireServer(portalItem, {Amount = amountSold})
     task.wait(0.5)
-    
     local goldGained = goldStat.Value - goldBefore
-    print("[SELL] Sold successfully! Gold gained:", goldGained, "Total gold:", goldStat.Value)
     
     sendWebhook("💰 Portal Sold", {
         title = "Auto-Sell Completed",
@@ -196,11 +145,7 @@ local function sellAllPortals()
 end
 
 local function autoBuyMerchant()
-    print("[MERCHANT] Attempting auto-buy")
-    if inGame() then 
-        print("[MERCHANT] Skipping - currently in game")
-        return 0, 0, 0, 0 
-    end
+    if inGame() then return 0, 0, 0, 0 end
     
     status = "Buying from merchant"
     print("[STATUS] " .. status)
@@ -211,13 +156,8 @@ local function autoBuyMerchant()
     
     -- Priority: Trait Rerolls
     if traitRerollData and traitRerollData.Quantity.Value > 0 then
-        print("[MERCHANT] Buying priority item: Trait Reroll")
         for i = 1, math.min(5, traitRerollData.Quantity.Value) do
-            if goldStat.Value < traitRerollData.CurrencyAmount.Value then 
-                print("[MERCHANT] Insufficient gold for Trait Reroll")
-                break 
-            end
-            
+            if goldStat.Value < traitRerollData.CurrencyAmount.Value then break end
             MerchantRemote:FireServer("Trait Reroll", 1)
             boughtRerolls = boughtRerolls + 1
             task.wait(0.1)
@@ -226,13 +166,8 @@ local function autoBuyMerchant()
     
     -- Secondary: Dr. Megga Punk
     if meggaPunkData and meggaPunkData.Quantity.Value > 0 then
-        print("[MERCHANT] Buying secondary item: Dr. Megga Punk")
         for i = 1, math.min(5, meggaPunkData.Quantity.Value) do
-            if goldStat.Value < meggaPunkData.CurrencyAmount.Value then 
-                print("[MERCHANT] Insufficient gold for Dr. Megga Punk")
-                break 
-            end
-            
+            if goldStat.Value < meggaPunkData.CurrencyAmount.Value then break end
             MerchantRemote:FireServer("Dr. Megga Punk", 1)
             boughtPunks = boughtPunks + 1
             task.wait(0.1)
@@ -242,12 +177,6 @@ local function autoBuyMerchant()
     task.wait(0.5)
     local rerollAfter = getInventoryAmount("Trait Reroll")
     local punkAfter = getInventoryAmount("Dr. Megga Punk")
-    
-    print(string.format(
-        "[MERCHANT] Purchase summary: Rerolls +%d (%d total) | Punks +%d (%d total)",
-        rerollAfter - rerollBefore, rerollAfter,
-        punkAfter - punkBefore, punkAfter
-    ))
     
     if boughtRerolls > 0 or boughtPunks > 0 then
         sendWebhook("🛒 Merchant Purchase", {
@@ -266,16 +195,11 @@ local function autoBuyMerchant()
 end
 
 local function joinTokyoGhoul()
-    if inGame() then 
-        print("[GAME] Already in game, skipping join")
-        return 
-    end
+    if inGame() then return end
     
     status = "Joining game"
     print("[STATUS] " .. status)
-    print("[GAME] Joining Tokyo Ghoul...")
     
-    -- Batch all join commands
     PlayRoomEvent:FireServer("Create")
     task.wait(0.1)
     PlayRoomEvent:FireServer("Change-World", {World = TARGET_WORLD})
@@ -287,8 +211,6 @@ local function joinTokyoGhoul()
     PlayRoomEvent:FireServer("Submit")
     task.wait(0.2)
     PlayRoomEvent:FireServer("Start")
-    
-    print("[GAME] Join sequence completed")
 end
 
 -- Main loop
@@ -309,7 +231,6 @@ local webhookSent = false
 print(string.format("[STATS] Initial values - Exp: %d, Gems: %d, Gold: %d", lastExp, lastGem, lastGold))
 
 -- Game state listener
-print("[LISTENER] Setting up game state listener...")
 gameRunningValue:GetPropertyChangedSignal("Value"):Connect(function()
     if not gameRunningValue.Value and not webhookSent then
         status = "Processing rewards"
@@ -320,11 +241,6 @@ gameRunningValue:GetPropertyChangedSignal("Value"):Connect(function()
         local expGain = expStat.Value - lastExp
         local gemGain = gemStat.Value - lastGem
         local goldGain = goldStat.Value - lastGold
-        
-        print(string.format(
-            "[REWARDS] Stage cleared! Exp: +%d, Gems: +%d, Gold: +%d",
-            expGain, gemGain, goldGain
-        ))
         
         lastExp, lastGem, lastGold = expStat.Value, gemStat.Value, goldStat.Value
         
@@ -343,17 +259,15 @@ gameRunningValue:GetPropertyChangedSignal("Value"):Connect(function()
         
         if LocalPlayer.PlayerGui:FindFirstChild("Visual") then
             LocalPlayer.PlayerGui.Visual:Destroy()
-            print("[CLEANUP] Removed Visual GUI")
         end
     elseif gameRunningValue.Value then
         status = "Farming stage"
         print("[STATUS] " .. status)
         webhookSent = false
-        print("[GAME] Game started")
     end
 end)
 
--- Runtime display in console
+-- Runtime display
 task.spawn(function()
     while true do
         local seconds = os.clock() - startTime
@@ -366,43 +280,36 @@ task.spawn(function()
 end)
 
 -- Optimized main cycle
-print("[CORE] Entering main farming loop")
 while true do
     -- LOBBY PHASE
-    print("[PHASE] Entering lobby phase")
     while not inGame() do
         sellAllPortals()
         autoBuyMerchant()
         
         -- Check if merchant will restock soon
         if getMerchantResetSeconds() <= 30 then
-            print("[MERCHANT] Restock imminent, teleporting to refresh")
             teleportToLobby()
             task.wait(15)
             break
         end
         
         joinTokyoGhoul()
-        task.wait(3)  -- Increased wait to prevent spamming
+        task.wait(3)
     end
 
     -- IN-GAME PHASE
-    print("[PHASE] Entering game phase")
     while inGame() do
         -- Enable auto-play if not active
         if not autoPlayBool.Value then
-            print("[AUTOPLAY] Enabling auto-play")
             AutoPlayRemote:FireServer()
         end
         
         -- Voting system
-        print("[VOTE] Sending votes")
         VotePlayingRemote:FireServer()
         task.wait(0.5)
         VoteRetryRemote:FireServer()
-        task.wait(2.5)  -- Increased delay between votes
+        task.wait(2.5)
     end
     
-    print("[TRANSITION] Between phases, waiting...")
     task.wait(3)
 end
