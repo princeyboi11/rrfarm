@@ -1,5 +1,5 @@
--- MIH HUB Auto-Farm Script with FPS Boost
-print("[DEBUG] Initializing MIH HUB Auto-Farm with FPS Boost...")
+-- MIH HUB Auto-Farm Script
+print("[DEBUG] Initializing MIH HUB Auto-Farm...")
 
 -- Configuration
 getgenv().Webhook = "https://discord.com/api/webhooks/1364262297182404760/KkAgDEMLbUsfzpLBcW0JQLkrNWb9T_oPE1gGI77I94VntVRbSOu2yA-9UG51av-e198J"
@@ -17,9 +17,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PLAYER_NAME = LocalPlayer.Name
 print("[PLAYER] Local player:", PLAYER_NAME)
@@ -81,123 +78,6 @@ title.Text = "MIH HUB"
 title.BackgroundTransparency = 1
 title.Parent = frame
 print("[GUI] Full-screen overlay created")
-
--- FPS Boost Functions (Optimized)
-print("[FPS-BOOST] Applying performance optimizations...")
-
-local function disableShadows()
-    Lighting.GlobalShadows = false
-    Lighting.EnvironmentDiffuseScale = 0
-    Lighting.EnvironmentSpecularScale = 0
-end
-
-local function disableEffects()
-    for _, o in ipairs(Workspace:GetDescendants()) do
-        if o:IsA("ParticleEmitter") or o:IsA("Trail") or o:IsA("Smoke") or o:IsA("Fire") or o:IsA("Sparkles") then 
-            o:Destroy()
-        elseif o:IsA("Texture") or o:IsA("Decal") then 
-            o:Destroy()
-        elseif o:IsA("BasePart") then 
-            o.Material = Enum.Material.SmoothPlastic
-            o.CastShadow = false
-            o.Reflectance = 0 
-        end
-    end
-end
-
-local function optimizeTerrain()
-    local t = Workspace:FindFirstChildOfClass("Terrain")
-    if t then 
-        t.WaterWaveSize = 0
-        t.WaterWaveSpeed = 0
-        t.WaterReflectance = 0
-        t.WaterTransparency = 1
-        t.Decorations = false 
-    end
-end
-
-local function disablePostProcessing()
-    for _, e in ipairs(Lighting:GetDescendants()) do 
-        if e:IsA("PostEffect") then e.Enabled = false end 
-    end
-    local sky = Lighting:FindFirstChildOfClass("Sky")
-    if sky then sky:Destroy() end
-end
-
-local function disableAnimations()
-    for _, h in ipairs(Workspace:GetDescendants()) do 
-        if h:IsA("Humanoid") then 
-            for _, t in ipairs(h:GetPlayingAnimationTracks()) do 
-                t:Stop(0) 
-            end 
-        end 
-    end
-    Workspace.DescendantAdded:Connect(function(o) 
-        if o:IsA("AnimationTrack") then o:Stop(0) end 
-    end)
-end
-
-local function optimizeCamera()
-    local cam = workspace.CurrentCamera
-    cam.FieldOfView = 70
-    cam:GetPropertyChangedSignal("FieldOfView"):Connect(function() 
-        cam.FieldOfView = 70 
-    end)
-end
-
-local function muteAllSounds()
-    for _, s in ipairs(Workspace:GetDescendants()) do 
-        if s:IsA("Sound") then s.Volume = 0 end 
-    end
-end
-
-local function optimizePhysics()
-    workspace.PhysicsSteppingMode = Enum.PhysicsSteppingMode.Disabled
-    workspace.SimulationRadius = 0
-    workspace.SimulationRadiusMomentum = 0
-end
-
-local function optimizeNetwork()
-    pcall(function() game.ReplicatedFirst:Destroy() end)
-end
-
-local function capGraphicsQuality()
-    pcall(function() 
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
-end
-
-local function disableLensFlare()
-    for _, e in ipairs(Lighting:GetDescendants()) do 
-        if e:IsA("LensFlare") then e.Enabled = false end 
-    end
-end
-
-local function disable3DChats()
-    for _, c in ipairs(Workspace:GetDescendants()) do 
-        if c.Name == "ChatMain" or c.Name == "Chat" then c:Destroy() end 
-    end
-end
-
--- Full Boost
-local function fullBoost()
-    disableShadows()
-    disableEffects()
-    optimizeTerrain()
-    disablePostProcessing()
-    disableAnimations()
-    optimizeCamera()
-    muteAllSounds()
-    optimizePhysics()
-    optimizeNetwork()
-    capGraphicsQuality()
-    disableLensFlare()
-    disable3DChats()
-    print("[FPS-BOOST] Full optimization applied")
-end
-
--- Apply FPS boost
-fullBoost()
 
 -- Main script functions
 local startTime = os.clock()
